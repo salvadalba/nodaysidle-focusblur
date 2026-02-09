@@ -1,0 +1,8 @@
+.build/
+.swiftpm/
+FocusBlur.app/
+FocusBlur.iconset/
+*.xcodeproj
+xcuserdata/
+DerivedData/
+.DS_Store

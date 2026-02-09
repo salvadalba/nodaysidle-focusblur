@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="50%" stop-color="#16213e"/>
+      <stop offset="100%" stop-color="#0f3460"/>
+    </linearGradient>
+
+    <!-- Glow gradient for the center lens -->
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e2e8f0" stop-opacity="0.95"/>
+      <stop offset="60%" stop-color="#94a3b8" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#475569" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Ring gradient -->
+    <linearGradient id="ring" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#94a3b8"/>
+    </linearGradient>
+
+    <!-- Blur filter for outer elements -->
+    <filter id="softblur">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+    <filter id="heavyblur">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="subtleglow">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+
+    <!-- Rounded square clip -->
+    <clipPath id="squircle">
+      <rect x="0" y="0" width="1024" height="1024" rx="224" ry="224"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background squircle -->
+  <g clip-path="url(#squircle)">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+
+    <!-- Subtle noise/texture via dots -->
+    <g opacity="0.03">
+      <circle cx="200" cy="180" r="120" fill="white"/>
+      <circle cx="800" cy="300" r="90" fill="white"/>
+      <circle cx="350" cy="750" r="100" fill="white"/>
+      <circle cx="700" cy="800" r="140" fill="white"/>
+    </g>
+
+    <!-- Blurred background "windows" to suggest desktop -->
+    <g filter="url(#heavyblur)" opacity="0.15">
+      <rect x="120" y="140" width="320" height="220" rx="12" fill="#e2e8f0"/>
+      <rect x="580" y="100" width="340" height="260" rx="12" fill="#cbd5e1"/>
+      <rect x="100" y="520" width="280" height="340" rx="12" fill="#e2e8f0"/>
+      <rect x="620" y="540" width="300" height="280" rx="12" fill="#cbd5e1"/>
+    </g>
+
+    <!-- Center glow -->
+    <circle cx="512" cy="512" r="280" fill="url(#glow)" filter="url(#subtleglow)" opacity="0.5"/>
+
+    <!-- Outer ring (blurred/unfocused) -->
+    <circle cx="512" cy="512" r="260" fill="none" stroke="#94a3b8" stroke-width="1.5" opacity="0.25" filter="url(#softblur)"/>
+    <circle cx="512" cy="512" r="220" fill="none" stroke="#94a3b8" stroke-width="1" opacity="0.2" filter="url(#softblur)"/>
+
+    <!-- Main focus ring -->
+    <circle cx="512" cy="512" r="180" fill="none" stroke="url(#ring)" stroke-width="3.5" opacity="0.9"/>
+
+    <!-- Inner clear circle (the "focused window") -->
+    <circle cx="512" cy="512" r="110" fill="#f8fafc" opacity="0.08"/>
+
+    <!-- Crosshair / viewfinder lines -->
+    <g stroke="url(#ring)" stroke-width="2.5" opacity="0.85" stroke-linecap="round">
+      <!-- Top -->
+      <line x1="512" y1="290" x2="512" y2="370"/>
+      <!-- Bottom -->
+      <line x1="512" y1="654" x2="512" y2="734"/>
+      <!-- Left -->
+      <line x1="290" y1="512" x2="370" y2="512"/>
+      <!-- Right -->
+      <line x1="654" y1="512" x2="734" y2="512"/>
+    </g>
+
+    <!-- Center dot -->
+    <circle cx="512" cy="512" r="6" fill="#f8fafc" opacity="0.9"/>
+
+    <!-- Corner brackets (viewfinder style) -->
+    <g stroke="url(#ring)" stroke-width="3" fill="none" opacity="0.7" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Top-left -->
+      <polyline points="370,400 370,370 400,370"/>
+      <!-- Top-right -->
+      <polyline points="624,370 654,370 654,400"/>
+      <!-- Bottom-right -->
+      <polyline points="654,624 654,654 624,654"/>
+      <!-- Bottom-left -->
+      <polyline points="400,654 370,654 370,624"/>
+    </g>
+
+    <!-- Subtle edge vignette -->
+    <rect width="1024" height="1024" fill="none" stroke="#000" stroke-width="120" opacity="0.15" rx="224" ry="224"/>
+  </g>
+</svg>
