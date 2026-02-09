@@ -6,11 +6,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var blurController: BlurOverlayController!
     private var isEnabled = false
     private var globalMonitor: Any?
+    private var shakeDetector: MouseShakeDetector!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         blurController = BlurOverlayController()
         setupStatusBar()
         setupGlobalShortcut()
+        setupShakeDetector()
         requestAccessibility()
     }
 
@@ -45,6 +47,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+    }
+
+    private func setupShakeDetector() {
+        shakeDetector = MouseShakeDetector()
+        shakeDetector.onShake = { [weak self] in
+            self?.toggleBlur()
+        }
+        shakeDetector.start()
     }
 
     private func requestAccessibility() {

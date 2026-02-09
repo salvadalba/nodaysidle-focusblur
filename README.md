@@ -48,6 +48,10 @@ No configuration. No modes to manage. Just calm.
 <td><strong>Multi-monitor</strong><br>Independent overlay per screen. Works across any display configuration.</td>
 </tr>
 <tr>
+<td align="center">🫨</td>
+<td><strong>Shake to toggle</strong><br>Wiggle your mouse rapidly to toggle blur on or off. No keyboard needed.</td>
+</tr>
+<tr>
 <td align="center">⌨️</td>
 <td><strong>Global shortcut</strong><br>Toggle blur with <code>Ctrl+Option+B</code> from anywhere. Or use the menu bar icon.</td>
 </tr>
@@ -99,6 +103,7 @@ open /Applications/FocusBlur.app
 | | Action | How |
 |---|---|---|
 | 🔘 | Toggle blur | Menu bar viewfinder icon → **Enable Blur** |
+| 🫨 | Shake toggle | Wiggle your mouse back and forth rapidly |
 | ⌨️ | Global toggle | `Ctrl + Option + B` |
 | 🚪 | Quit | Menu bar → **Quit FocusBlur** |
 
@@ -143,7 +148,7 @@ open /Applications/FocusBlur.app
 ## Roadmap
 
 - [ ] Adjustable blur intensity
-- [ ] Shake-to-toggle gesture
+- [x] Shake-to-toggle gesture
 - [ ] Grayscale mode for background windows
 - [ ] Custom tint colors
 - [ ] App exclusion list
@@ -158,5 +163,6 @@ open /Applications/FocusBlur.app
 <br>
 
 <div align="center">
-<sub>Built with focus. For focus.</sub>
+<sub>Built with focus. For focus.</sub><br><br>
+<sub>nodaysidle</sub>
 </div>
