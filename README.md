@@ -56,8 +56,28 @@ No configuration. No modes to manage. Just calm.
 <td><strong>Global shortcut</strong><br>Toggle blur with <code>Ctrl+Option+B</code> from anywhere. Or use the menu bar icon.</td>
 </tr>
 <tr>
+<td align="center">🎛️</td>
+<td><strong>Adjustable intensity</strong><br>Dial blur from subtle to heavy via the preferences slider. Changes apply in real-time.</td>
+</tr>
+<tr>
+<td align="center">🩶</td>
+<td><strong>Grayscale mode</strong><br>Desaturate background windows to black & white using a Core Image filter.</td>
+</tr>
+<tr>
+<td align="center">🎨</td>
+<td><strong>Custom tint colors</strong><br>Overlay a color tint on blurred windows with adjustable opacity. Pick any color.</td>
+</tr>
+<tr>
+<td align="center">🚫</td>
+<td><strong>App exclusion list</strong><br>Exclude specific apps from being blurred. Pick from running apps in Preferences.</td>
+</tr>
+<tr>
+<td align="center">🚀</td>
+<td><strong>Launch at login</strong><br>One toggle in Preferences to start FocusBlur automatically when you log in.</td>
+</tr>
+<tr>
 <td align="center">🪶</td>
-<td><strong>Featherweight</strong><br>~300 lines of Swift. No Electron. No web views. No background CPU drain. Pure native macOS.</td>
+<td><strong>Featherweight</strong><br>~500 lines of Swift. No Electron. No web views. No background CPU drain. Pure native macOS.</td>
 </tr>
 <tr>
 <td align="center">👻</td>
@@ -141,18 +161,19 @@ open /Applications/FocusBlur.app
 | Build | SwiftPM (no Xcode project) |
 | Blur engine | `NSVisualEffectView` — system-level compositing |
 | Window detection | Accessibility API — no screen recording permission |
-| Size | ~300 lines, ~100 KB binary |
+| Size | ~500 lines, ~100 KB binary |
 
 <br>
 
 ## Roadmap
 
-- [ ] Adjustable blur intensity
+- [x] Adjustable blur intensity
 - [x] Shake-to-toggle gesture
-- [ ] Grayscale mode for background windows
-- [ ] Custom tint colors
-- [ ] App exclusion list
-- [ ] Launch at login
+- [x] Grayscale mode for background windows
+- [x] Custom tint colors + opacity control
+- [x] App exclusion list
+- [x] Launch at login
+- [x] Preferences window (menu bar → Preferences…)
 
 <br>
 

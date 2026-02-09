@@ -7,9 +7,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var isEnabled = false
     private var globalMonitor: Any?
     private var shakeDetector: MouseShakeDetector!
+    private var settingsController: SettingsWindowController!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Register default settings
+        UserDefaults.standard.register(defaults: [
+            "intensity": 0.7,
+            "grayscale": false,
+            "tintEnabled": false,
+            "tintR": 0.2, "tintG": 0.4, "tintB": 0.9,
+            "tintOpacity": 0.15,
+            "excludedJSON": "[]",
+            "loginItem": false
+        ])
+
         blurController = BlurOverlayController()
+        settingsController = SettingsWindowController()
         setupStatusBar()
         setupGlobalShortcut()
         setupShakeDetector()
@@ -30,6 +43,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
+        let prefs = NSMenuItem(title: "Preferences…", action: #selector(openPreferences), keyEquivalent: "")
+        prefs.target = self
+        menu.addItem(prefs)
+
+        menu.addItem(.separator())
+
         let quit = NSMenuItem(title: "Quit FocusBlur", action: #selector(quitApp), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
@@ -38,7 +57,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupGlobalShortcut() {
-        // Ctrl+Option+B to toggle blur globally
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 11 &&
                event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [.control, .option] {
@@ -80,6 +98,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let item = statusItem.menu?.items.first {
             item.title = isEnabled ? "Disable Blur" : "Enable Blur"
         }
+    }
+
+    @objc private func openPreferences() {
+        settingsController.show()
     }
 
     @objc private func quitApp() {
