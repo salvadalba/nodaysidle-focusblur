@@ -1,28 +1,25 @@
 import Cocoa
 import ApplicationServices
 
-// A window that never activates or steals focus
 final class PassthroughWindow: NSWindow {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 }
 
 final class BlurOverlayController {
-    private struct Overlay {
-        let window: PassthroughWindow
-        let container: NSView
+    private struct ScreenOverlay {
+        let blurWindow: PassthroughWindow
         let blurView: NSVisualEffectView
-        let grayView: NSView
-        let tintView: NSView
-        let mask: CAShapeLayer
+        let dimWindow: PassthroughWindow
+        let dimView: NSView
+        let dimMask: CAShapeLayer
     }
 
-    private var overlays: [Overlay] = []
+    private var overlays: [ScreenOverlay] = []
     private var timer: Timer?
     private var activationObserver: NSObjectProtocol?
     private var lastFrame: NSRect = .zero
     private(set) var isActive = false
-
     private let ud = UserDefaults.standard
 
     // MARK: - Public
@@ -32,7 +29,7 @@ final class BlurOverlayController {
         isActive = true
         createOverlays()
         startTracking()
-        updateMask()
+        forceUpdateMask()
     }
 
     func deactivate() {
@@ -42,83 +39,73 @@ final class BlurOverlayController {
         destroyOverlays()
     }
 
-    // MARK: - Overlay windows
+    // MARK: - Overlays
 
     private func createOverlays() {
+        let level1 = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.floatingWindow)) + 1)
+        let level2 = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.floatingWindow)) + 2)
+
         for screen in NSScreen.screens {
-            let frame = screen.frame
-            let localSize = NSRect(origin: .zero, size: frame.size)
+            let sf = screen.frame
 
-            let window = PassthroughWindow(
-                contentRect: frame,
-                styleMask: .borderless,
-                backing: .buffered,
-                defer: false
-            )
-            window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.floatingWindow)) + 1)
-            window.isOpaque = false
-            window.hasShadow = false
-            window.backgroundColor = .clear
-            window.ignoresMouseEvents = true
-            window.hidesOnDeactivate = false
-            window.animationBehavior = .none
-            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-
-            // Container holds all effect layers; mask is applied here
-            let container = NSView(frame: localSize)
-            container.wantsLayer = true
-            container.autoresizingMask = [.width, .height]
-
-            let mask = CAShapeLayer()
-            mask.fillRule = .evenOdd
-            container.layer?.mask = mask
-
-            // 1. Blur view
-            let blurView = NSVisualEffectView(frame: localSize)
+            // --- Blur window (uses maskImage for cutout) ---
+            let bWin = makeWindow(frame: sf, level: level1)
+            let blurView = NSVisualEffectView(frame: NSRect(origin: .zero, size: sf.size))
             blurView.autoresizingMask = [.width, .height]
-            blurView.material = .fullScreenUI
+            blurView.material = .hudWindow
             blurView.blendingMode = .behindWindow
             blurView.state = .active
-            blurView.wantsLayer = true
-            container.addSubview(blurView)
+            // maskImage = nil means full blur (no cutout) — correct initial state
 
-            // 2. Grayscale overlay (desaturates via Core Image background filter)
-            let grayView = NSView(frame: localSize)
-            grayView.autoresizingMask = [.width, .height]
-            grayView.wantsLayer = true
-            grayView.layerUsesCoreImageFilters = true
-            if let filter = CIFilter(name: "CIColorControls") {
-                filter.setDefaults()
-                filter.setValue(0.0, forKey: kCIInputSaturationKey)
-                grayView.layer?.backgroundFilters = [filter]
-            }
-            grayView.isHidden = true
-            container.addSubview(grayView)
+            bWin.contentView = blurView
+            bWin.orderFrontRegardless()
 
-            // 3. Tint color overlay
-            let tintView = NSView(frame: localSize)
-            tintView.autoresizingMask = [.width, .height]
-            tintView.wantsLayer = true
-            tintView.layer?.backgroundColor = NSColor.clear.cgColor
-            tintView.isHidden = true
-            container.addSubview(tintView)
+            // --- Dim/tint window (regular view, CAShapeLayer mask works fine) ---
+            let dWin = makeWindow(frame: sf, level: level2)
+            let dimView = NSView(frame: NSRect(origin: .zero, size: sf.size))
+            dimView.autoresizingMask = [.width, .height]
+            dimView.wantsLayer = true
+            dimView.layerUsesCoreImageFilters = true
 
-            window.contentView = container
-            window.orderFrontRegardless()
+            let dimMask = CAShapeLayer()
+            dimMask.fillRule = .evenOdd
+            let dimInit = CGMutablePath()
+            dimInit.addRect(CGRect(origin: .zero, size: sf.size))
+            dimMask.path = dimInit
+            dimView.layer!.mask = dimMask
 
-            overlays.append(Overlay(
-                window: window,
-                container: container,
-                blurView: blurView,
-                grayView: grayView,
-                tintView: tintView,
-                mask: mask
+            dWin.contentView = dimView
+            dWin.orderFrontRegardless()
+
+            overlays.append(ScreenOverlay(
+                blurWindow: bWin, blurView: blurView,
+                dimWindow: dWin, dimView: dimView, dimMask: dimMask
             ))
         }
     }
 
+    private func makeWindow(frame: NSRect, level: NSWindow.Level) -> PassthroughWindow {
+        let w = PassthroughWindow(
+            contentRect: frame, styleMask: .borderless,
+            backing: .buffered, defer: false
+        )
+        w.level = level
+        w.isOpaque = false
+        w.hasShadow = false
+        w.backgroundColor = .clear
+        w.ignoresMouseEvents = true
+        w.hidesOnDeactivate = false
+        w.animationBehavior = .none
+        w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        return w
+    }
+
     private func destroyOverlays() {
-        overlays.forEach { $0.window.orderOut(nil) }
+        overlays.forEach {
+            $0.blurView.maskImage = nil
+            $0.blurWindow.orderOut(nil)
+            $0.dimWindow.orderOut(nil)
+        }
         overlays.removeAll()
         lastFrame = .zero
     }
@@ -128,15 +115,12 @@ final class BlurOverlayController {
     private func startTracking() {
         activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
-            object: nil,
-            queue: .main
+            object: nil, queue: .main
         ) { [weak self] _ in
-            self?.lastFrame = .zero
-            self?.updateMask()
+            self?.forceUpdateMask()
         }
-
         timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
-            self?.updateMask()
+            self?.updateLoop()
         }
     }
 
@@ -149,76 +133,119 @@ final class BlurOverlayController {
         timer = nil
     }
 
-    // MARK: - Update loop
+    // MARK: - Mask image for NSVisualEffectView
 
-    private func updateMask() {
+    /// Creates a mask image: white = blur visible, transparent = blur hidden (cutout).
+    private func makeMaskImage(size: CGSize, cutout: NSRect) -> NSImage {
+        let img = NSImage(size: size)
+        img.lockFocus()
+        NSColor.white.set()
+        NSRect(origin: .zero, size: size).fill()
+        NSColor.clear.set()
+        cutout.fill(using: .copy)
+        img.unlockFocus()
+        return img
+    }
+
+    // MARK: - Update
+
+    private func forceUpdateMask() {
+        lastFrame = NSRect(x: -1, y: -1, width: 0, height: 0)
+        updateLoop()
+    }
+
+    private func updateLoop() {
         guard isActive else { return }
 
-        // Read settings every frame (UserDefaults caches in memory — fast)
         let intensity = max(0.05, ud.double(forKey: "intensity"))
         let grayscale = ud.bool(forKey: "grayscale")
         let tintEnabled = ud.bool(forKey: "tintEnabled")
-        let tintR = ud.double(forKey: "tintR")
-        let tintG = ud.double(forKey: "tintG")
-        let tintB = ud.double(forKey: "tintB")
-        let tintOpacity = max(0.05, ud.double(forKey: "tintOpacity"))
 
         let frame = activeWindowFrame()
 
-        // Skip mask update if window hasn't moved
-        let frameChanged: Bool
+        let changed: Bool
         if let f = frame {
-            frameChanged = !NSEqualRects(f, lastFrame)
+            changed = !NSEqualRects(f, lastFrame)
         } else {
-            frameChanged = !NSEqualRects(lastFrame, .zero)
-        }
-        if frameChanged {
-            lastFrame = frame ?? .zero
+            changed = !NSEqualRects(lastFrame, .zero)
         }
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
 
         for overlay in overlays {
-            // Apply intensity
+            // Blur intensity
             overlay.blurView.alphaValue = intensity
 
             // Grayscale
-            overlay.grayView.isHidden = !grayscale
+            if grayscale {
+                if overlay.dimView.layer?.backgroundFilters?.isEmpty ?? true {
+                    if let filter = CIFilter(name: "CIColorControls") {
+                        filter.setDefaults()
+                        filter.setValue(0.0, forKey: kCIInputSaturationKey)
+                        overlay.dimView.layer?.backgroundFilters = [filter]
+                    }
+                }
+            } else {
+                if !(overlay.dimView.layer?.backgroundFilters?.isEmpty ?? true) {
+                    overlay.dimView.layer?.backgroundFilters = []
+                }
+            }
 
             // Tint
             if tintEnabled {
-                overlay.tintView.isHidden = false
-                overlay.tintView.layer?.backgroundColor = NSColor(
-                    red: tintR, green: tintG, blue: tintB, alpha: tintOpacity
-                ).cgColor
+                let r = ud.double(forKey: "tintR")
+                let g = ud.double(forKey: "tintG")
+                let b = ud.double(forKey: "tintB")
+                let a = max(0.05, ud.double(forKey: "tintOpacity"))
+                overlay.dimView.layer?.backgroundColor = NSColor(red: r, green: g, blue: b, alpha: a).cgColor
             } else {
-                overlay.tintView.isHidden = true
+                overlay.dimView.layer?.backgroundColor = NSColor.clear.cgColor
             }
 
-            // Mask (only rebuild path if frame changed)
-            if frameChanged {
-                let screenSize = overlay.window.frame.size
-                let screenOrigin = overlay.window.frame.origin
-                let path = CGMutablePath()
-                path.addRect(CGRect(origin: .zero, size: screenSize))
+            // Mask update
+            if changed {
+                let screenSize = overlay.blurWindow.frame.size
+                let screenOrigin = overlay.blurWindow.frame.origin
 
+                // Blur: use maskImage (the correct API for NSVisualEffectView)
                 if let f = frame {
                     let local = CGRect(
                         x: f.origin.x - screenOrigin.x,
                         y: f.origin.y - screenOrigin.y,
                         width: f.width,
                         height: f.height
-                    )
-                    let screenBounds = CGRect(origin: .zero, size: screenSize)
-                    if screenBounds.intersects(local) {
-                        let padded = local.insetBy(dx: -4, dy: -4)
-                        path.addRect(padded)
+                    ).insetBy(dx: -6, dy: -6)
+
+                    if CGRect(origin: .zero, size: screenSize).intersects(local) {
+                        overlay.blurView.maskImage = makeMaskImage(size: screenSize, cutout: local)
+                    } else {
+                        overlay.blurView.maskImage = nil // full blur
                     }
+                } else {
+                    overlay.blurView.maskImage = nil // full blur, no active window
                 }
 
-                overlay.mask.path = path
+                // Dim: use CAShapeLayer mask (works fine on regular views)
+                let dimPath = CGMutablePath()
+                dimPath.addRect(CGRect(origin: .zero, size: screenSize))
+                if let f = frame {
+                    let local = CGRect(
+                        x: f.origin.x - screenOrigin.x,
+                        y: f.origin.y - screenOrigin.y,
+                        width: f.width,
+                        height: f.height
+                    ).insetBy(dx: -6, dy: -6)
+                    if CGRect(origin: .zero, size: screenSize).intersects(local) {
+                        dimPath.addRect(local)
+                    }
+                }
+                overlay.dimMask.path = dimPath
             }
+        }
+
+        if changed {
+            lastFrame = frame ?? .zero
         }
 
         CATransaction.commit()
@@ -229,10 +256,6 @@ final class BlurOverlayController {
     private func activeWindowFrame() -> NSRect? {
         guard let frontApp = NSWorkspace.shared.frontmostApplication else { return nil }
 
-        // Skip our own app
-        if frontApp.bundleIdentifier == Bundle.main.bundleIdentifier { return nil }
-
-        // Check exclusion list
         if let bid = frontApp.bundleIdentifier {
             let json = ud.string(forKey: "excludedJSON") ?? "[]"
             let excluded = (try? JSONDecoder().decode([String].self, from: Data(json.utf8))) ?? []
@@ -245,7 +268,6 @@ final class BlurOverlayController {
         var windowRef: AnyObject?
         guard AXUIElementCopyAttributeValue(appRef, kAXFocusedWindowAttribute as CFString, &windowRef) == .success,
               let win = windowRef else { return nil }
-
         let el = win as! AXUIElement
 
         var posRef: AnyObject?
